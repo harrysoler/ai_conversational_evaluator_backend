@@ -72,21 +72,33 @@ El comando aplica, en orden, los archivos de `migrations/` y registra cada versi
 
 ### 4. Importar el padrón académico (workspace combinado)
 
-Los archivos Excel se mantienen fuera de este repositorio porque contienen datos personales. Desde la raíz del backend, valida primero el resumen de importación:
+Los tres Excel contienen datos personales y se mantienen fuera de Git, en `../docs-privados/` junto a las carpetas de backend y frontend. Copia allí los archivos de docentes, decanos y estudiantes con los nombres indicados abajo. Desde la raíz del backend, valida primero el resumen:
 
 ```bash
-deno task import:roster --dry-run "../docs/DOCENTES SEGUIMIENTO A SYLLABUS.xlsx" "../docs/ESTUDIANTES SEGUIMIENTO SYLLABUS.xlsx"
+deno task bootstrap:roster --dry-run
 ```
 
-Si el resumen es correcto, ejecuta la importación:
+Después carga el esquema y el padrón:
 
 ```bash
-deno task import:roster "../docs/DOCENTES SEGUIMIENTO A SYLLABUS.xlsx" "../docs/ESTUDIANTES SEGUIMIENTO SYLLABUS.xlsx"
+deno task bootstrap:roster
 ```
+
+`bootstrap:roster` busca `DOCENTES SEGUIMIENTO A SYLLABUS.xlsx`, `DECANOS SEGUIMIENTO A SYLLABUS.xlsx` y `ESTUDIANTES SEGUIMIENTO SYLLABUS.xlsx` en `../docs-privados/`. Si los archivos tienen otra ubicación, usa `deno task migrate` y luego `deno task import:roster [--dry-run] <docentes.xlsx> <decanos.xlsx> <estudiantes.xlsx>`. Los decanos se importan con rol docente porque también dictan clase y el modelo de acceso no tiene un rol específico de decano.
 
 El proceso es idempotente: no reemplaza contraseñas de cuentas existentes. Para cuentas nuevas usa el correo institucional y el número de documento como contraseña temporal, y exige cambiarla por una contraseña de al menos 12 caracteres al primer ingreso. El padrón contiene programas/unidades académicas y materias, pero no una columna explícita de facultad. Tampoco incluye el grupo de matrícula de cada estudiante; por eso se omiten las asociaciones estudiante-materia cuando la relación con docentes resulta ambigua.
 
-### 5. Iniciar la API
+### 5. Respaldar la base de datos para otro despliegue
+
+Con `pg_dump` disponible en el entorno Nix del backend, ejecuta:
+
+```bash
+deno task backup:db
+```
+
+El respaldo PostgreSQL se guarda en `../docs-privados/backups/` con permisos privados. Incluye cuentas, contraseñas cifradas, perfiles, relaciones y resultados existentes. Transfiérelo solo por un canal privado. Para restaurarlo en una base PostgreSQL **vacía**, crea la base y ejecuta `pg_restore --no-owner --no-acl --dbname="$DATABASE_URL" <archivo.dump>` desde un entorno que tenga `pg_restore`; después configura los secretos de la API para ese despliegue. También es posible reconstruir solo el padrón con `bootstrap:roster` si el receptor tiene los tres Excel privados.
+
+### 6. Iniciar la API
 
 Desde la raíz del repositorio del backend:
 
@@ -102,7 +114,7 @@ deno task start
 
 La API usa la ruta base `/api`; entre sus grupos se encuentran `/api/auth`, `/api/admin`, `/api/teacher`, `/api/student`, `/api/me` y `/api/conversations`.
 
-### 6. Cargar datos de demostración (opcional)
+### 7. Cargar datos de demostración (opcional)
 
 Con la base de datos disponible y las variables configuradas:
 
@@ -128,6 +140,8 @@ deno task start # ejecución sin recarga automática
 deno task migrate # aplicar migraciones PostgreSQL
 deno task seed  # carga de datos de demostración
 deno task import:roster # importar padrón desde los Excel del workspace
+deno task bootstrap:roster # migrar e importar los tres Excel privados
+deno task backup:db # crear respaldo privado de PostgreSQL
 ```
 
 ## Modelo de IA

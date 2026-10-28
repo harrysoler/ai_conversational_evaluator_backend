@@ -14,7 +14,9 @@
     "start": "deno run -P --env-file src/main.ts",
     "migrate": "deno run --allow-env --allow-net --allow-read=./migrations --env-file src/scripts/migrate.ts",
     "seed": "deno run -P --env-file src/scripts/seed-demo-users.ts",
-    "import:roster": "deno run --allow-env --allow-net --allow-sys=uid --allow-read=../docs,./migrations --env-file src/scripts/import-academic-roster.ts"
+    "import:roster": "deno run --allow-env --allow-net --allow-sys=uid --allow-read=../docs-privados,./migrations --env-file src/scripts/import-academic-roster.ts",
+    "bootstrap:roster": "deno run -A --env-file src/scripts/bootstrap-roster.ts",
+    "backup:db": "deno run -A --env-file src/scripts/backup-database.ts"
   },
   "permissions": {
     "default": {

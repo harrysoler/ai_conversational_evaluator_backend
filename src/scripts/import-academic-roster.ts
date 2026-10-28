@@ -260,17 +260,20 @@ async function ensureAccount(
 async function main() {
   const args = Deno.args.filter((arg) => arg !== "--dry-run");
   const dryRun = Deno.args.includes("--dry-run");
-  if (args.length !== 2) {
+  if (args.length !== 2 && args.length !== 3) {
     throw new Error(
-      "Uso: deno task import:roster [--dry-run] <archivo-docentes.xlsx> <archivo-estudiantes.xlsx>",
+      "Uso: deno task import:roster [--dry-run] <docentes.xlsx> [decanos.xlsx] <estudiantes.xlsx>",
     );
   }
 
-  const [teacherPath, studentPath] = await Promise.all(args.map((path) => Deno.realPath(path)));
-  const [teacherRows, studentRows] = await Promise.all([
-    readTeachers(teacherPath),
+  const paths = await Promise.all(args.map((path) => Deno.realPath(path)));
+  const teacherPaths = paths.slice(0, -1);
+  const studentPath = paths.at(-1)!;
+  const [teacherSources, studentRows] = await Promise.all([
+    Promise.all(teacherPaths.map(readTeachers)),
     readStudents(studentPath),
   ]);
+  const teacherRows = teacherSources.flat();
 
   const peopleByKey = new Map<string, Person>();
   const invalidIdentities = new Set<string>();
@@ -349,6 +352,7 @@ async function main() {
   if (dryRun) {
     console.log(JSON.stringify({
       mode: "dry-run",
+      teacherSourceRows: teacherSources.map((rows) => rows.length),
       teacherRows: teacherRows.length,
       uniqueTeachers: new Set(teacherRows.map((teacher) => teacher.documentNumber)).size,
       studentRows: studentRows.length,
